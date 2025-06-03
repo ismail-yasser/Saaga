@@ -1,6 +1,7 @@
 # Saga Pattern Implementation - Node.js Microservices
 
-![Implementation](./saga-nodejs.png)
+![saga-nodejs](https://github.com/user-attachments/assets/0e2b6ebd-9568-4468-b01d-c487809a7b3f)
+
 
 ## Overview
 
