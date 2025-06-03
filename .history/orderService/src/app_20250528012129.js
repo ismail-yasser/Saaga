@@ -1,0 +1,44 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+require('dotenv').config();
+
+const Consumer = require('../../kafkaBroker/kafkaHandler/Consumer');
+const eventHandler = require('./eventHandler');
+const CreateOrder = require('./Controller/createOrder');
+const app = express();
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended : false}));
+
+const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017/orderdb";
+mongoose.connect(mongoUri, { useNewUrlParser : true, useUnifiedTopology : true }).then(data => {    app.post('/createorder',CreateOrder);
+
+    const PORT = process.env.PORT || 3000;
+
+    app.listen(PORT,() => {
+        console.log(`Order Service is running on port ${PORT}`);
+    })
+
+    const consumer = new Consumer();    consumer.addTopics(["ORDER_SERVICE","SERVICE_REPLY"]).then(() => {
+        consumer.consume(message => {
+            console.log("consumed message",message);
+            try {
+                const parsedMessage = JSON.parse(message.value);
+                eventHandler(parsedMessage);
+            } catch (error) {
+                console.error('Error parsing message:', error);
+                console.log('Raw message:', message);
+            }
+        })
+    }).catch(error => {
+        console.error('Error setting up Kafka consumer:', error);
+    });
+    
+})
+.catch(err => {
+    console.log(`Error in Mongo Connection ${err}`)
+})
+
+
+

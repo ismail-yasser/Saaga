@@ -1,0 +1,59 @@
+# Multi-stage Dockerfile for Saga Microservices
+FROM node:18-alpine AS base
+
+# Install required packages
+RUN apk add --no-cache bash curl netcat-openbsd
+
+WORKDIR /app
+
+# Copy package.json files for all services
+COPY kafkaBroker/package*.json ./kafkaBroker/
+COPY orderService/package*.json ./orderService/
+COPY paymentService/package*.json ./paymentService/
+COPY orchestatorService/package*.json ./orchestatorService/
+COPY websocketService/package*.json ./websocketService/
+COPY frontend/package*.json ./frontend/
+
+# Install dependencies for all services
+RUN cd kafkaBroker && npm install --production
+RUN cd orderService && npm install --production
+RUN cd paymentService && npm install --production
+RUN cd orchestatorService && npm install --production
+RUN cd websocketService && npm install --production
+
+# Build frontend
+RUN cd frontend && npm install
+
+# Copy source code for all services
+COPY kafkaBroker/ ./kafkaBroker/
+COPY orderService/ ./orderService/
+COPY paymentService/ ./paymentService/
+COPY orchestatorService/ ./orchestatorService/
+COPY websocketService/ ./websocketService/
+COPY frontend/ ./frontend/
+
+# Build frontend
+RUN cd frontend && npm run build
+
+# Create startup script
+COPY docker/start-all-services.sh /app/start-all-services.sh
+RUN chmod +x /app/start-all-services.sh
+
+# Create environment file
+COPY docker/.env /app/.env
+
+# Create logs directory
+RUN mkdir -p /app/logs
+
+# Expose all service ports
+EXPOSE 3000 3001 3002 3003 3004
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Set default command
+CMD ["/app/start-all-services.sh"]
+
+# Start all services
+CMD ["/app/start-all-services.sh"]
